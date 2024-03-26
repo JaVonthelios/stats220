@@ -1,0 +1,307 @@
+---
+title: "Project2"
+subtitle: "STATS 220 Semester One 2024"
+author: "Yuchao Bian ybia011"
+date: "2024-03-26"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{css echo = FALSE}
+body {
+  font-family: Times New Roman;
+  font-size: 12pt;
+  background-color: white;
+}
+
+pre {
+  background-color: #f0f0f0;
+  color: black;
+  padding: 5px;
+}
+```
+
+```{r setup, include=FALSE}
+
+#we want the code to be shown in the output but not any message, warning and error, so TRUE for echo, and FALSE for the latter three
+
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE, error=FALSE)
+
+#load the tidyverse package
+
+library(tidyverse)
+
+
+
+```
+
+## Introduction
+
+### Topic
+
+For the target question, I want to focus on how human **manage** their time weekly, so I created a *Google form* where I can collect data for this topic.
+
+### Guidelines
+
+As a way of deepening my understanding, I will discuss how I followed all guidelines.
+
+#### Guideline 1
+
+I named the Google form quite straightforward by "Weekly Time Management Survey". Then I made a description on the purpose for the usage of data and how the survey would be conducted, basically I told the participant via this that the survey is anonymous.
+
+#### Guideline 2
+
+I wanted to roughly know how people spend their free time and what is they distribute their time on different tasks, which I asked about the spare time event and the hours spent on them and main tasks.
+
+#### Guideline 3
+
+To make sure that nobody is excluded from my survey, I used multiple choice questions to direct different group of people to different sections with slightly different questions. (I aimed to categorize two group of people in to one variable but failed, and Dr.Fergusson suggested me just demonstrating my understanding of Module 2 and my questions would be covered in future modules.)
+
+#### Guideline 4
+
+I used validation rules for some of my questions, to collect numeric data, we can limit respondents to only input numbers and even within a specific interval. And for the spare time event, I used this to require respondents to at least select one closest option to the event they have done in the past one week. Additionally, regex can be used here to restrict the answer form but I **have not** used.
+
+### Ability to analyze weekly change
+
+I set the condition as "over the past one week" for all my questions, for instance, "Over the past one week, how many hours did you spend on study? (including lecture time, reading and after-class revision)", this allows the change for different weeks, and the change can be visualized by repeatedly sending the form to the same group of respondents.
+
+### Links
+
+[Google form](https://docs.google.com/forms/d/e/1FAIpQLSdtjsiTHG-aWLeJZ5sbdPmDnOjoP7_VvhCXsx39xatkScULmQ/viewform?usp=sf_link)
+
+[CSV sheet link](https://docs.google.com/spreadsheets/d/e/2PACX-1vS-qRVlqsgaz1ntKa4Ll_t2DukzzoIZQWtp7d_EkvDYsygNetUD9c73-OuzJezEDNwEFIP1R-s3EurI/pub?output=csv)
+
+[Google sheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vS-qRVlqsgaz1ntKa4Ll_t2DukzzoIZQWtp7d_EkvDYsygNetUD9c73-OuzJezEDNwEFIP1R-s3EurI/pubhtml)
+
+## Analytics
+
+### Static statements
+
+1. Most of participants who filled my form are students.
+
+2. In total, or on average, student spent more time on study than relaxing events over the past one week
+
+3. On average, non-student participants' perceived level of time management skill is higher than that of student participants, over the past one week.
+
+```{r}
+# read the data and name it learning_data
+learning_data <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS-qRVlqsgaz1ntKa4Ll_t2DukzzoIZQWtp7d_EkvDYsygNetUD9c73-OuzJezEDNwEFIP1R-s3EurI/pub?output=csv")
+
+# Timestamp seems to be irrelevant to what I want to discuss, so remove it from the column. other columns were named by the questions, not neat, so rename them to neater names.
+survey_data_renamed <- learning_data[c(-1)] %>%
+  rename(age = 1,
+         gender = 2,
+         occupation = 3,
+         study_time = 4,
+         event_stu = 5,
+         event_stu_time = 6,
+         selfrate_stu = 7,
+         task_time = 8,
+         event_otr = 9,
+         event_otr_time = 10,
+         selfrate_otr = 11) %>%
+  glimpse()
+
+# for the checkbox questions, there were respondents selecting more than one responses, separate these responses to different entries
+survey_data_longer <- survey_data_renamed %>%
+  separate_rows(event_stu, event_otr, sep = ", ")
+
+
+```
+
+### Bar chart for students' spare time event
+
+```{r}
+# make the change useful and visualize it, created a bar chart because I want to know how many students engaged in different types of events in their spare time, used drop_na() to remove those NA appearing under what I am interested in
+survey_data_longer %>%
+  drop_na(event_stu) %>%
+  ggplot() +
+  geom_bar(aes(y = event_stu),
+           fill = "#ADD8E6") +
+  labs(title = "Number of students engaged in different events",
+       subtitle = "Comparing the number of students engaged in different events",
+       x = "Number of people",
+       y = "Events") +
+  theme(plot.subtitle = element_text(size = 9))
+
+
+```
+
+### Bar chart for non-students' spare time event
+
+```{r}
+# do the same to non-students
+  survey_data_longer %>%
+  drop_na(event_otr) %>%
+  ggplot() +
+  geom_bar(aes(y = event_otr),
+           fill = "#ADD8E6") +
+  labs(title = "Number of non-students engaged in different events",
+       subtitle = "Comparing the number of non-students engaged in different events",
+       x = "Number of people",
+       y = "Events") + 
+  theme(plot.subtitle = element_text(size = 9))
+```
+
+### Bar chart regarding different level of students' perceived time management ability and summary
+
+```{r}
+# Now I am curious about how people perceive their time management ability on a scale of 1 to 7, similar to the previous code but for another column, note that we added rows for the events because people can select different events, the survey_data_renamed duplicated other data of the same people who selected more than one events, so I used survey_data_renamed to prevent duplicated number of people
+survey_data_renamed %>%
+  drop_na(selfrate_stu) %>%
+  ggplot() +
+  geom_bar(aes(y = selfrate_stu),
+           fill = "#FFDAB9") +
+  labs(title = "Time under Control",
+       subtitle = "On a scale of 1 to 7 of perceived time management ability, we compare the number of students at each level",
+       x = "Number of people",
+       y = "perceived ability (level)") +
+  theme(plot.subtitle = element_text(size = 9))
+
+# Since the scale level is numeric, we can evaluate the mean, maximum level and minimum level, but the latter two can be eyeballed from the bar chart
+mean_stu_rate <- mean(survey_data_renamed$selfrate_stu, na.rm = TRUE) %>%
+  round(1)
+paste("The average level of perceived time management ability over the past one weekamong students is", mean_stu_rate)
+
+max_stu_rate <- max(survey_data_renamed$selfrate_stu, na.rm = TRUE) %>%
+  round(1)
+paste("The maximum level of perceived time management ability over the past one weekamong students is", max_stu_rate)
+
+paste("The minimum level of perceived time management ability over the past one week among students is",  min(survey_data_renamed$selfrate_stu, na.rm = TRUE) %>%
+  round(1))
+
+```
+
+### Bar chart regarding different level of non-students' perceived time management ability and summary
+
+```{r}
+#Same for non-student group
+survey_data_renamed %>%
+  drop_na(selfrate_otr) %>%
+  ggplot() +
+  geom_bar(aes(y = selfrate_otr),
+           fill = "#FFDAB9") +
+  labs(title = "Time under Control",
+       subtitle = "On a scale of 1 to 7 of perceived time management ability, we compare the number of non-students at each level",
+       x = "Number of people",
+       y = "perceived ability (level)") + 
+  theme(plot.subtitle = element_text(size = 9))
+
+mean_otr_rate <- mean(survey_data_renamed$selfrate_otr, na.rm = TRUE) %>%
+  round(1)
+
+max_otr_rate <- max(survey_data_renamed$selfrate_otr, na.rm = TRUE) %>%
+  round(1)
+
+min_otr_rate <- min(survey_data_renamed$selfrate_otr, na.rm = TRUE) %>%
+  round(1)
+
+paste("The average level of perceived time management ability over the past one week among non-students is", mean_otr_rate)
+
+paste("The maximum level of perceived time management ability over the past one week among non-students is", max_otr_rate)
+
+paste("The minimum level of perceived time management ability over the past one week among non-students is", min_otr_rate)
+
+
+```
+
+### Students' time 
+
+```{r}
+# bar chart may not be a good indicator of numeric variables, to make the data I collected useful, I also created two boxplot as an additional challenge for myself
+survey_data_renamed %>%
+  drop_na(study_time) %>%
+  ggplot() +
+  geom_boxplot(aes(x = gender,
+               y = study_time),
+               fill = "#ADD8E6",
+               outlier.color = "red") + 
+  labs(title = "Students' Study Time across Genders",
+       subtitle = "Comparing students' study times among different genders",
+       x = "Gender (identified)",
+       y = "Study Time (hours)"
+       )
+
+survey_data_renamed %>%
+  drop_na(event_stu_time) %>%
+  ggplot() +
+  geom_boxplot(aes(x = gender,
+               y = event_stu_time),
+               fill = "#ADD8E6",
+               outlier.color = "red") + 
+  labs(title = "Students' Spare Time on Relaxing Events across Genders",
+       subtitle = "Comparing students' spare time spent on relaxing events different genders",
+       x = "Gender (identified)",
+       y = "Event Time (hours)"
+       )
+
+# I want to summarize students' time spent on study
+max_study_time <- max(survey_data_renamed$study_time, na.rm = TRUE)
+paste("Student participants' maximum study time over the past one week is", max_study_time, "hours")
+
+min_study_time <- min(survey_data_renamed$study_time, na.rm = TRUE)
+paste("Student participants' minimum study time over the past one week is", min_study_time, "hours")
+
+mean_study_time <- mean(survey_data_renamed$study_time, na.rm = TRUE) %>%
+  round(1)
+paste("Student participants' average study time over the past one week is", mean_study_time, "hours")
+
+total_study_time <- sum(survey_data_renamed$study_time, na.rm = TRUE)
+paste("Student participants' total study time over the past one week is", total_study_time, "hours")
+
+stu_time_neat <- survey_data_renamed %>%
+  drop_na(study_time)
+
+cat("Stutent participants' study times over the past one week are", stu_time_neat$study_time, "hours", sep = ", ")
+
+# time spent on relaxing events
+
+max_ev_time <- max(survey_data_renamed$event_stu_time, na.rm = TRUE)
+paste("Student participants' maximum time spent on relaxing events over the past one week is", max_ev_time, "hours")
+
+min_ev_time <- min(survey_data_renamed$event_stu_time, na.rm = TRUE)
+paste("Student participants' minimum time spent on relaxing events over the past one week is", min_study_time, "hours")
+
+mean_ev_time <- mean(survey_data_renamed$event_stu_time, na.rm = TRUE) %>%
+  round(1)
+paste("Student participants' average time spent on relaxing events over the past one week is", mean_ev_time, "hours")
+
+total_ev_time <- sum(survey_data_renamed$event_stu_time, na.rm = TRUE)
+paste("Student participants' total time spent on relaxing events over the past one week is", total_ev_time, "hours")
+
+stu_time_neat <- survey_data_renamed %>%
+  drop_na(event_stu_time)
+
+cat("Stutent participants' time spent on relaxing events over the past one week are", stu_time_neat$event_stu_time, "hours", sep = ", ")
+```
+### Additional static statement for the boxplot
+
+On average, female student participants spent more time on study than male student participants over the past one week.
+
+
+## Creativity
+
+### Google form
+
+To create a google form, I customized the background to make it more colorful at least, that participants may be more willingly to fill the form. Also I used conditional questions to make sure every participants can provide some data although this added difficulty for me to use the data.
+
+### Markdown
+
+In markdown, I italicized and bolded some of the keywords, these are the stuff learnt from project one that can also be universally used.
+
+### Plots
+
+I used c() function but with negative value inside to get rid of useless columns, this was learnt in project 1 and could be universally useful. Furthermore, I used theme() function under ggplot to resize the subtitle font size so it can fit in the graph, I also changed color for bar chart to make it more readable. Speaking of difficulty for using data, I also used drop_na() function to get rid of NA values, this is different from using the "na.rm = TRUE" argument. Moreover, I used separate_rows() function with sep = ", " argument to separate multiple responses from the same participant to different entries so we can count numbers for each type of response. Additionally, to count numbers for a small number of different categories, it might be good to use bar chart, but it might be intuitively better to use box plot to visualize numeric data, for instance, the study_time would make the graph way more nasty if it varied quite much. 
+
+### Summary
+
+I used both paste() and cat() function to produce text for each value and overall respectively, however, I still need to practice the use of sep = argument. I also used round() function for the mean values to prevent the values from having too many decimal places.
+
+
+
+## Learning reflection
+
+In this project of Module 2, I have learnt how to summarize numeric values with mean(), max(), min(), sum() to get mean, maxima, minima and sum values respectively, string values with nchar() to get the number of characters, vectors with length() to get the number of units, and to visualize count number of categorical variables using ggplot() and geom_bar() function from ggplot2 package included in tidyverse. Moreover, I have understood now that csv file is just a file consisting of values separated by commas, and can be further proceeded in R. We can also use regex to get expected format of response in Google form although I failed using it. Last but not least, I also learnt how to fold code chunks and hide css chunk to make my output neater.
+
+As shown in my project, I want to discover more functions of ggplot2 package to visualize more diverse data. I also want to know whether we can use nested logic with regex to achieve more as I was thinking of getting numbers with one decimal place only and use is.numeric() function to make the data numbers in R.
